@@ -40,6 +40,7 @@ def make_context(**overrides) -> ScanContext:
         www_mismatch=False,
         timeout_seconds=20.0,
         error=None,
+        browser_error=None,
         business_name="Example Business",
         city="Houston",
         has_website=True,

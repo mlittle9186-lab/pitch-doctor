@@ -26,6 +26,7 @@ from pitch_doctor.checks.base import (
     extract_business_name,
     extract_city,
     find_social_profile_links,
+    has_viewport_meta,
     not_applicable_result,
     soupify,
 )
@@ -387,6 +388,14 @@ async def build_scan_context(
         except Exception as exc:  # noqa: BLE001 -- a browser failure must not abort the scan
             browser_signals["error"] = str(exc)
 
+    # The viewport tag is in the markup we already fetched over HTTP, so it
+    # stays knowable even when the browser dies. The rendered DOM still wins
+    # when we have it -- it also sees tags injected by JavaScript.
+    browser_ran = browser_signals.get("error") is None and dns_resolves
+    viewport_meta_present = browser_signals.get("viewport_meta_present", False)
+    if not browser_ran and html:
+        viewport_meta_present = has_viewport_meta(soupify(html))
+
     internal_links = _extract_internal_links(html, final_url) if html else []
     broken_links, www_mismatch = ([], False)
     if dns_resolves and not http_data.get("error"):
@@ -424,13 +433,14 @@ async def build_scan_context(
         mobile_screenshot_b64=browser_signals.get("mobile_screenshot_b64"),
         desktop_screenshot_b64=browser_signals.get("desktop_screenshot_b64"),
         mobile_overflow_px=browser_signals.get("mobile_overflow_px"),
-        viewport_meta_present=browser_signals.get("viewport_meta_present", False),
+        viewport_meta_present=viewport_meta_present,
         internal_links=internal_links,
         broken_links=broken_links,
         dns_resolves=dns_resolves,
         www_mismatch=www_mismatch,
         timeout_seconds=timeout,
         error=http_data.get("error"),
+        browser_error=browser_signals.get("error"),
         business_name=resolved_name,
         city=resolved_city,
         has_website=True,

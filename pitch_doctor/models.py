@@ -107,6 +107,12 @@ class ScanContext:
     timeout_seconds: float = 20.0
     error: str | None = None
 
+    # Why the headless browser failed, when it did. The page itself may have
+    # fetched fine over HTTP, so this is *our* failure, not the site's: checks
+    # that depend on a real render must report it as unmeasured rather than
+    # inferring that the site is slow or not mobile-ready.
+    browser_error: str | None = None
+
     # Business identity. Supplied by the caller, or inferred from the page's
     # LocalBusiness JSON-LD / og:site_name / <title> when only a URL is given.
     business_name: str | None = None

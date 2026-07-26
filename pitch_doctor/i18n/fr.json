@@ -55,7 +55,11 @@
       "found_critical": "Temps avant l'apparition d'un contenu visible, sur une connexion mobile de milieu de gamme simulée : {seconds} secondes.",
       "found_warning": "Temps avant l'apparition d'un contenu visible, sur une connexion mobile de milieu de gamme simulée : {seconds} secondes.",
       "found_ok": "Temps avant l'apparition d'un contenu visible, sur une connexion mobile de milieu de gamme simulée : {seconds} secondes.",
-      "benefit": "Un site plus rapide garde vos visiteurs assez longtemps sur la page pour appeler, réserver ou acheter -- au lieu de faire demi-tour."
+      "benefit": "Un site plus rapide garde vos visiteurs assez longtemps sur la page pour appeler, réserver ou acheter -- au lieu de faire demi-tour.",
+      "found_unreachable": "The page never loaded, so there was no load time to measure. {detail}",
+      "found_unmeasured": "Load speed could not be measured on this scan: the page fetched normally, but our test browser failed to render it. {detail}",
+      "impact_unreachable": "Your site never finished loading during this scan. A visitor tapping your Google listing right now sees an error instead of your business.",
+      "impact_unmeasured": "This is a limitation of our scan, not a finding about your site -- treat load speed as unchecked here rather than as good or bad news."
     },
     "ssl": {
       "name": "Sécurité SSL / HTTPS",
@@ -79,7 +83,10 @@
       "found_ok": "La page s'est affichée correctement à la fois sur mobile (390x844) et sur ordinateur (1440x900).",
       "benefit": "Une mise en page adaptée aux téléphones permet aux visiteurs de vraiment lire votre menu, vos prix ou votre formulaire de réservation, sans avoir à zoomer.",
       "issue_viewport": "aucune balise viewport mobile, donc les téléphones affichent une version réduite du site pour ordinateur",
-      "issue_overflow": "le contenu déborde de {px}px hors de l'écran, ce qui force un défilement horizontal"
+      "issue_overflow": "le contenu déborde de {px}px hors de l'écran, ce qui force un défilement horizontal",
+      "found_partial": "The mobile viewport tag is present, but the page could not be rendered on this scan, so we could not check whether content overflows the screen. {detail}",
+      "impact_partial": "Only part of this check could run. Your site declares mobile support correctly; whether it actually fits a phone screen is unverified here rather than good or bad news.",
+      "issue_overflow_unknown": "The page could not be rendered on this scan, so content overflowing the screen edge was not checked."
     },
     "outdated_signals": {
       "name": "Signes de Contenu Obsolète",

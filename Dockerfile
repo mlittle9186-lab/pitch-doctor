@@ -9,6 +9,14 @@ COPY pyproject.toml README.md LICENSE ./
 COPY pitch_doctor ./pitch_doctor
 RUN pip install --no-cache-dir ".[web]"
 
+# The base image ships the browsers for *its* Playwright version, but pip just
+# installed whatever the latest matching `playwright>=...` is -- and Playwright
+# looks for one exact browser revision. Without this, every launch fails with
+# "Executable doesn't exist at /ms-playwright/chromium-XXXX/..." and every scan
+# silently loses load speed, overflow, and screenshots. Installing after pip
+# fetches the revision the installed version actually wants.
+RUN playwright install chromium
+
 # Container / cloud defaults (override at runtime if needed).
 ENV PLAYWRIGHT_CHANNEL=chromium \
     PLAYWRIGHT_NO_SANDBOX=1 \

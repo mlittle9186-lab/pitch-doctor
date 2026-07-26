@@ -141,13 +141,16 @@ def render_html(scan: ScanReport, strings: Strings, brand: BrandInfo) -> str:
     checks_sorted = sorted(
         scan.checks, key=lambda c: SEVERITY_ORDER.get(c.severity.value, 3)
     )
-    # Website checks with nothing to inspect still count against the score, but
-    # a page each would bury the real findings under sixteen copies of the same
-    # sentence -- so they collapse into one grouped section. A *presence* check
-    # that couldn't be verified keeps its own card, because the reason is
-    # specific and worth reading.
+    # The grouped section exists for exactly one situation: there is no website,
+    # so sixteen checks have nothing to inspect and a page each would bury the
+    # real findings under sixteen copies of the same sentence. Any *other*
+    # unevaluated check -- an unverifiable Google lookup, a render that failed
+    # on a site that does exist -- keeps its own card, because the reason is
+    # specific and the reader needs it.
     not_evaluated = [
-        c for c in checks_sorted if c.not_applicable and c.id in WEBSITE_CHECK_IDS
+        c
+        for c in checks_sorted
+        if c.not_applicable and not scan.has_website and c.id in WEBSITE_CHECK_IDS
     ]
     grouped_ids = {c.id for c in not_evaluated}
     findings = [c for c in checks_sorted if c.id not in grouped_ids]

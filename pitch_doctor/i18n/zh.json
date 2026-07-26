@@ -55,7 +55,11 @@
       "found_critical": "在模拟的中端移动网络下，页面出现可见内容所用的时间：{seconds} 秒。",
       "found_warning": "在模拟的中端移动网络下，页面出现可见内容所用的时间：{seconds} 秒。",
       "found_ok": "在模拟的中端移动网络下，页面出现可见内容所用的时间：{seconds} 秒。",
-      "benefit": "更快的网站能让访客在页面上多停留一会儿，足够他们打电话、预约或下单——而不是直接点击返回。"
+      "benefit": "更快的网站能让访客在页面上多停留一会儿，足够他们打电话、预约或下单——而不是直接点击返回。",
+      "found_unreachable": "The page never loaded, so there was no load time to measure. {detail}",
+      "found_unmeasured": "Load speed could not be measured on this scan: the page fetched normally, but our test browser failed to render it. {detail}",
+      "impact_unreachable": "Your site never finished loading during this scan. A visitor tapping your Google listing right now sees an error instead of your business.",
+      "impact_unmeasured": "This is a limitation of our scan, not a finding about your site -- treat load speed as unchecked here rather than as good or bad news."
     },
     "ssl": {
       "name": "SSL / HTTPS 安全性",
@@ -79,7 +83,10 @@
       "found_ok": "页面在移动端（390x844）和桌面端（1440x900）视口下均显示正常。",
       "benefit": "适配手机的排版能让访客真正看清您的菜单、价格或预约表单，而不用费力放大缩小。",
       "issue_viewport": "缺少移动端视口（viewport）标签，导致手机把页面当作缩小版的电脑页面来显示",
-      "issue_overflow": "内容溢出屏幕边缘 {px} 像素，导致需要左右滑动才能看全"
+      "issue_overflow": "内容溢出屏幕边缘 {px} 像素，导致需要左右滑动才能看全",
+      "found_partial": "The mobile viewport tag is present, but the page could not be rendered on this scan, so we could not check whether content overflows the screen. {detail}",
+      "impact_partial": "Only part of this check could run. Your site declares mobile support correctly; whether it actually fits a phone screen is unverified here rather than good or bad news.",
+      "issue_overflow_unknown": "The page could not be rendered on this scan, so content overflowing the screen edge was not checked."
     },
     "outdated_signals": {
       "name": "内容过时信号",

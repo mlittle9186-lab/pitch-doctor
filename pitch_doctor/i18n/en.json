@@ -55,6 +55,10 @@
       "found_critical": "Time until visible content appeared, on a simulated mid-range mobile connection: {seconds} seconds.",
       "found_warning": "Time until visible content appeared, on a simulated mid-range mobile connection: {seconds} seconds.",
       "found_ok": "Time until visible content appeared, on a simulated mid-range mobile connection: {seconds} seconds.",
+      "found_unreachable": "The page never loaded, so there was no load time to measure. {detail}",
+      "found_unmeasured": "Load speed could not be measured on this scan: the page fetched normally, but our test browser failed to render it. {detail}",
+      "impact_unreachable": "Your site never finished loading during this scan. A visitor tapping your Google listing right now sees an error instead of your business.",
+      "impact_unmeasured": "This is a limitation of our scan, not a finding about your site -- treat load speed as unchecked here rather than as good or bad news.",
       "benefit": "A faster site keeps more visitors on the page long enough to call, book, or buy -- instead of hitting the back button."
     },
     "ssl": {
@@ -77,9 +81,12 @@
       "found_critical": "Detected rendering problems on a 390x844 mobile viewport: {issues}.",
       "found_warning": "Detected minor rendering issues on a 390x844 mobile viewport: {issues}.",
       "found_ok": "The page rendered cleanly at both mobile (390x844) and desktop (1440x900) viewports.",
+      "found_partial": "The mobile viewport tag is present, but the page could not be rendered on this scan, so we could not check whether content overflows the screen. {detail}",
+      "impact_partial": "Only part of this check could run. Your site declares mobile support correctly; whether it actually fits a phone screen is unverified here rather than good or bad news.",
       "benefit": "A phone-friendly layout means visitors can actually read your menu, prices, or booking form without pinching and zooming.",
       "issue_viewport": "no mobile viewport tag, so phones render it like a shrunken desktop page",
-      "issue_overflow": "content overflows {px}px past the screen edge, forcing sideways scrolling"
+      "issue_overflow": "content overflows {px}px past the screen edge, forcing sideways scrolling",
+      "issue_overflow_unknown": "The page could not be rendered on this scan, so content overflowing the screen edge was not checked."
     },
     "outdated_signals": {
       "name": "Outdated Content Signals",

@@ -55,6 +55,10 @@
       "found_critical": "Tiempo hasta que apareció contenido visible, en una conexión móvil de gama media simulada: {seconds} segundos.",
       "found_warning": "Tiempo hasta que apareció contenido visible, en una conexión móvil de gama media simulada: {seconds} segundos.",
       "found_ok": "Tiempo hasta que apareció contenido visible, en una conexión móvil de gama media simulada: {seconds} segundos.",
+      "found_unreachable": "La página nunca cargó, así que no hubo tiempo de carga que medir. {detail}",
+      "found_unmeasured": "No se pudo medir la velocidad de carga en este análisis: la página se descargó con normalidad, pero nuestro navegador de prueba no logró renderizarla. {detail}",
+      "impact_unreachable": "Tu sitio nunca terminó de cargar durante este análisis. Alguien que toque tu ficha de Google en este momento ve un error en lugar de tu negocio.",
+      "impact_unmeasured": "Esta es una limitación de nuestro análisis, no un hallazgo sobre tu sitio: toma la velocidad de carga como no verificada, ni buena ni mala noticia.",
       "benefit": "Un sitio más rápido mantiene a más visitantes en la página el tiempo suficiente para llamar, reservar o comprar, en vez de irse."
     },
     "ssl": {
@@ -77,9 +81,12 @@
       "found_critical": "Se detectaron problemas de visualización en un viewport móvil de 390x844: {issues}.",
       "found_warning": "Se detectaron problemas menores de visualización en un viewport móvil de 390x844: {issues}.",
       "found_ok": "La página se visualizó correctamente tanto en móvil (390x844) como en escritorio (1440x900).",
+      "found_partial": "La etiqueta de viewport móvil está presente, pero la página no se pudo renderizar en este análisis, así que no pudimos revisar si el contenido se desborda de la pantalla. {detail}",
+      "impact_partial": "Solo se pudo ejecutar parte de esta revisión. Tu sitio declara correctamente el soporte móvil; si realmente se ajusta a la pantalla de un celular queda sin verificar, ni buena ni mala noticia.",
       "benefit": "Un diseño adaptado a celulares permite que los visitantes lean tu menú, precios o formulario de reserva sin tener que hacer zoom.",
       "issue_viewport": "no tiene etiqueta de viewport móvil, así que los celulares la muestran como una página de escritorio reducida",
-      "issue_overflow": "el contenido se desborda {px}px fuera de la pantalla, obligando a desplazarse hacia los lados"
+      "issue_overflow": "el contenido se desborda {px}px fuera de la pantalla, obligando a desplazarse hacia los lados",
+      "issue_overflow_unknown": "La página no se pudo renderizar en este análisis, así que no se revisó si el contenido se desborda del borde de la pantalla."
     },
     "outdated_signals": {
       "name": "Señales de Contenido Desactualizado",

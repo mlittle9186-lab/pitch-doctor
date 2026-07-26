@@ -50,6 +50,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   translating them is open work.
 
 ### Fixed
+- **A failing headless browser was reported as findings against the customer's
+  site.** Playwright exceptions were caught and then dropped -- `ScanContext`
+  had nowhere to put them -- leaving `load_time_seconds=None` and
+  `viewport_meta_present=False`, which the checks read as facts. Every report
+  from an affected deploy claimed the site was critically slow ("your site
+  takes **N/As** to show anything on a phone") and had no mobile viewport tag,
+  regardless of the site. Now:
+  - `ScanContext.browser_error` carries the failure instead of discarding it,
+    and the reason is printed in the evidence so it's diagnosable.
+  - The viewport tag is read from the HTML already fetched over HTTP when the
+    browser can't render, so it is never falsely reported missing.
+  - Load speed distinguishes "the site never loaded" (a real critical finding,
+    with its own copy -- no more `N/A` substitution) from "our browser failed"
+    (a warning marked not-applicable, never blamed on the site).
+  - Mobile rendering still calls out a genuinely missing viewport tag, but no
+    longer claims anything about overflow it couldn't measure.
+- **Docker: every scan lost its browser data.** The Playwright base image ships
+  browsers for its own version while `pip install` resolved `playwright>=1.44.0`
+  to a newer one, so Chromium's expected revision wasn't present and every
+  launch failed. The image now runs `playwright install chromium` after pip.
 - **Load speed measurement was reporting misleadingly high times.** It waited
   for the browser's full `load` event (which blocks on every slow
   third-party script, ad, or tracker) under an aggressive "Slow 4G" CDP
