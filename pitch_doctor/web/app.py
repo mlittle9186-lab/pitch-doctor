@@ -53,7 +53,6 @@ COPY: dict[str, dict] = {
         "business_name_label": "Business name (required if there's no website)",
         "city_label": "City",
         "brand_name_label": "Your name",
-        "brand_email_label": "Contact email",
         "brand_phone_label": "Contact phone",
         "contact_cta": "Update or Build Your Website with a Professional",
         "footer": "",
@@ -82,7 +81,6 @@ COPY: dict[str, dict] = {
         "business_name_label": "Nombre del negocio (obligatorio si no hay sitio web)",
         "city_label": "Ciudad",
         "brand_name_label": "Tu nombre",
-        "brand_email_label": "Correo de contacto",
         "brand_phone_label": "Teléfono de contacto",
         "contact_cta": "Actualiza o Crea Tu Sitio Web de Forma Profesional",
         "footer": "",
@@ -111,7 +109,6 @@ COPY: dict[str, dict] = {
         "business_name_label": "Nom de l'entreprise (obligatoire s'il n'y a pas de site web)",
         "city_label": "Ville",
         "brand_name_label": "Votre nom",
-        "brand_email_label": "E-mail de contact",
         "brand_phone_label": "Téléphone de contact",
         "contact_cta": "Mettez à Jour ou Créez Votre Site Web de Manière Professionnelle",
         "footer": "",
@@ -136,8 +133,11 @@ class ScanRequest(BaseModel):
     """A scan started from the web form.
 
     ``email`` is the *visitor's* address -- the lead -- and is required here
-    even though the engine never sees it. ``brand_email`` is unrelated: it's
-    what gets printed on the report.
+    even though the engine never sees it. On the public form it doubles as the
+    contact address on the report: a visitor auditing their own business would
+    only type the same thing twice, so the form no longer asks. ``brand_email``
+    stays accepted for callers that do want them different (the CLI keeps its
+    separate ``--brand-email``), and falls back to ``email`` when omitted.
     """
 
     url: str | None = None
@@ -146,7 +146,7 @@ class ScanRequest(BaseModel):
     email: str
     lang: str = "en"
     brand_name: str
-    brand_email: str
+    brand_email: str | None = None
     brand_phone: str
 
     @field_validator("url", "business_name", "city", mode="before")
@@ -229,7 +229,7 @@ def create_app(out_dir: Path, timeout: float = 25.0) -> FastAPI:
                 )
                 brand = BrandInfo(
                     name=req.brand_name or "Your Agency",
-                    email=req.brand_email or "hello@zerodigitx.com",
+                    email=req.brand_email or req.email,
                     phone=req.brand_phone or "281-468-9892",
                 )
                 html_path = write_report(scan_report, strings, brand, out_dir)

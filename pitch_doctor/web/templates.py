@@ -181,10 +181,6 @@ PAGE = """<!doctype html>
             <input type="text" name="brand_name" id="brand-name-input" required>
           </div>
           <div>
-            <label id="brand-email-label"></label>
-            <input type="email" name="brand_email" id="brand-email-input" required>
-          </div>
-          <div>
             <label id="brand-phone-label"></label>
             <input type="tel" name="brand_phone" id="brand-phone-input" placeholder="xxx-xxx-xxxx" required>
           </div>
@@ -217,11 +213,11 @@ const errorSlot = document.getElementById('error-slot');
 
 function t(lang) { return COPY[lang] || COPY.en; }
 
-// If user pastes a full URL, use it as-is. Otherwise, let the backend
-// handle DNS resolution (trying both domain.com and www.domain.com).
+// Pass the URL through untouched either way: a pasted full URL is used as-is,
+// and a bare domain is left for the backend, which prepends https:// and tries
+// both domain.com and www.domain.com while resolving DNS.
 function withScheme(raw) {
-  const value = raw.trim();
-  return /^https?:\/\//i.test(value) ? value : value;
+  return raw.trim();
 }
 
 function applyCopy() {
@@ -237,7 +233,6 @@ function applyCopy() {
   document.getElementById('city-label').textContent = c.city_label;
   document.getElementById('lang-label').textContent = c.lang_label;
   document.getElementById('brand-name-label').textContent = c.brand_name_label;
-  document.getElementById('brand-email-label').textContent = c.brand_email_label;
   document.getElementById('brand-phone-label').textContent = c.brand_phone_label;
   document.getElementById('footer-note').textContent = c.footer;
   document.getElementById('contact-cta').textContent = c.contact_cta;
@@ -365,7 +360,9 @@ form.addEventListener('submit', async function (evt) {
     email: document.getElementById('email-input').value,
     lang: langSelect.value,
     brand_name: document.getElementById('brand-name-input').value,
-    brand_email: document.getElementById('brand-email-input').value,
+    // No separate contact email: on the public form the visitor is auditing
+    // their own business, so the lead address is the contact address. The
+    // server falls back to it.
     brand_phone: document.getElementById('brand-phone-input').value,
   };
 
