@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 try:
-    from weasyprint import HTML, CSS
+    from weasyprint import CSS, HTML
 except ImportError:
     HTML = None
     CSS = None

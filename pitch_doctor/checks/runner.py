@@ -20,7 +20,6 @@ from playwright.async_api import Browser, async_playwright
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from pitch_doctor.browser_launch import chromium_launch_kwargs
-
 from pitch_doctor.checks import ALL_CHECKS
 from pitch_doctor.checks.base import soupify
 from pitch_doctor.i18n import Strings

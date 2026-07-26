@@ -99,19 +99,41 @@ same `--out` directory -- there's no separate code path to keep in sync.
 A generated example lives in [`examples/`](examples/) after you run the scan
 described below.
 
-## The checks (V1)
+## The checks
 
 Each check returns a severity (`critical` / `warning` / `ok`), the evidence
-that led to it, and a business-language explanation of why it matters:
+that led to it, and a business-language explanation of why it matters. They
+run in the order below, which is also roughly their order of importance to
+the business.
 
-1. **Load speed** -- time until visible content appears (First Contentful Paint), measured via Playwright on a simulated mid-range mobile connection. We deliberately measure *perceived* load time, not the browser's full `load` event -- the latter blocks on every slow third-party script/ad/tracker and can report numbers far worse than what a real visitor actually experiences.
+**Reach and trust**
+
+1. **Reachability / uptime** -- DNS resolution, response status, redirect chain length, www/non-www consistency.
 2. **SSL / HTTPS** -- missing HTTPS or an invalid certificate.
-3. **Mobile rendering** -- viewport meta tag, horizontal overflow, and side-by-side phone + desktop screenshots.
-4. **Outdated signals** -- stale copyright year in the footer.
-5. **Broken links** -- up to 25 internal links checked concurrently for 404s.
-6. **Contact friction** -- phone numbers not wrapped in `tel:` links, missing email/contact link, missing address.
-7. **Search visibility basics** -- title, meta description, Open Graph tags, favicon, `LocalBusiness` JSON-LD.
-8. **Reachability / uptime** -- DNS resolution, response status, redirect chain length, www/non-www consistency.
+3. **Security headers** -- `X-Frame-Options`, `X-Content-Type-Options`, CSP, HSTS.
+4. **Load speed** -- time until visible content appears (First Contentful Paint), measured via Playwright on a simulated mid-range mobile connection. We deliberately measure *perceived* load time, not the browser's full `load` event -- the latter blocks on every slow third-party script/ad/tracker and can report numbers far worse than what a real visitor actually experiences.
+5. **Mobile rendering** -- viewport meta tag, horizontal overflow, and side-by-side phone + desktop screenshots.
+6. **Mobile UX (advanced)** -- responsive images (`srcset`), mobile navigation, tappable `tel:` numbers, viewport handling on notched devices.
+
+**Findability and usability**
+
+7. **Outdated signals** -- stale copyright year in the footer.
+8. **Broken links** -- up to 25 internal links checked concurrently for 404s.
+9. **Contact friction** -- phone numbers not wrapped in `tel:` links, missing email/contact link, missing address.
+10. **Search visibility basics** -- title, meta description, Open Graph tags, favicon, `LocalBusiness` JSON-LD.
+11. **SEO (advanced)** -- Open Graph completeness, Schema.org JSON-LD, canonical tags, `robots` meta.
+12. **Accessibility (WCAG 2.1)** -- image alt text, heading structure, form labels, semantic navigation.
+13. **Legal compliance** -- privacy policy, terms of service, cookie notice, a way to make a data request.
+
+**Conversion and measurement**
+
+14. **User experience / CTA clarity** -- clear calls to action, trust signals, pricing transparency, form complexity.
+15. **Analytics & tracking** -- Google Analytics, GTM, Facebook Pixel, event tracking, UTM handling.
+16. **Performance optimization details** -- gzip/Brotli compression, cache headers, lazy loading, WebP, third-party script count.
+
+> Checks 3, 6, and 11-16 currently emit English-only copy; `--lang` still
+> translates the report chrome and the original eight checks. Translating the
+> newer ones is open work.
 
 ## The health score
 
@@ -125,28 +147,57 @@ score = max(0, 100 - sum(deduction(check) for check in checks))
 
 | Check | Critical | Warning |
 |---|---|---|
-| Load speed | -20 | -10 |
-| SSL / HTTPS | -20 | -10 |
-| Reachability / uptime | -15 | -8 |
-| Mobile rendering | -15 | -8 |
-| Outdated signals | -10 | -5 |
-| Broken links | -10 | -5 |
-| Contact friction | -10 | -5 |
-| Search visibility basics | -10 | -5 |
+| Load speed | -15 | -8 |
+| SSL / HTTPS | -15 | -8 |
+| Reachability / uptime | -12 | -6 |
+| Mobile rendering | -12 | -6 |
+| Security headers | -8 | -4 |
+| Broken links | -8 | -4 |
+| Contact friction | -8 | -4 |
+| Search visibility basics | -8 | -4 |
+| Accessibility | -7 | -3 |
+| SEO (advanced) | -6 | -3 |
+| Legal compliance | -6 | -3 |
+| Outdated signals | -5 | -3 |
+| Mobile UX (advanced) | -5 | -3 |
+| User experience / CTA | -5 | -3 |
+| Performance optimization | -5 | -3 |
+| Analytics & tracking | -4 | -2 |
+
+The weights are front-loaded on purpose: the top four checks alone cost 54
+points, so a site that's slow, insecure, unreachable and broken on phones
+grades **F** no matter how it does elsewhere. All 16 at critical sum to 129 --
+more than 100 -- so the score floors at 0 rather than going negative.
 
 An `ok` result always costs 0. Letter grades: **A** 90-100, **B** 80-89,
 **C** 70-79, **D** 60-69, **F** below 60. See `pitch_doctor/scoring.py` for
 the implementation.
 
-## Why HTML by default, and PDF as a flag
+## Why HTML by default, and PDF on demand
 
-WeasyPrint (the usual Python-to-PDF route) depends on native GTK/Pango
-libraries that are painful to install reliably on Windows. Rather than fight
-that, every report is generated as a single self-contained HTML file first
+Every report is generated as a single self-contained HTML file first
 (screenshots and any logo are embedded as base64 data URIs -- no external
-assets, opens offline, emails cleanly as an attachment). Pass `--pdf` to also
-render that same HTML to PDF using the headless Chromium instance Playwright
-already ships with (`page.pdf()`) -- no extra system dependencies required.
+assets, opens offline, emails cleanly as an attachment). PDF is a second step,
+and there are two routes to it depending on where you are:
+
+- **CLI (`--pdf`)** -- renders that same HTML with the headless Chromium
+  instance Playwright already ships with (`page.pdf()`). No extra system
+  dependencies, since Playwright is a hard requirement anyway.
+- **Web UI ("Download as PDF" button, or Ctrl/Cmd+S)** -- posts to
+  `/reports/{filename}/generate-pdf`, which converts the HTML with
+  **WeasyPrint** and serves the result from `/pdf/{filename}`. WeasyPrint is
+  an optional dependency of the `[web]` extra; if it isn't importable the
+  endpoint returns an error and the button degrades to a no-op rather than
+  breaking the page.
+
+WeasyPrint is kept out of the CLI path deliberately: it depends on native
+GTK/Pango libraries that are awkward to install on Windows, and the CLI must
+work on a bare checkout. On Debian/Ubuntu hosts, the button needs those
+libraries present:
+
+```bash
+apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libffi8
+```
 
 ## Deploy the web UI (free)
 
