@@ -11,7 +11,8 @@ Weight table (points lost per check, by severity). "ok" always costs 0.
 These weights roughly track how directly the issue costs the business
 customers versus how much it merely looks unpolished, in three tiers.
 
-Tier 1 -- the visitor never gets to see the site, or doesn't trust it:
+Tier 1 -- the customer never finds the business, never gets to the site, or
+doesn't trust what they see:
 
 +--------------------------+----------+---------+
 | check                    | critical | warning |
@@ -20,7 +21,12 @@ Tier 1 -- the visitor never gets to see the site, or doesn't trust it:
 | ssl                      |    15    |    8    |
 | reachability             |    12    |    6    |
 | mobile_rendering         |    12    |    6    |
+| google_business          |    12    |    6    |
 +--------------------------+----------+---------+
+
+google_business sits in Tier 1 on purpose: for a local business the Google
+listing is frequently the *only* thing a nearby customer sees, and for one with
+no website it is their entire online presence.
 
 Tier 2 -- the visitor arrives but can't find, use, or act on the site:
 
@@ -42,13 +48,20 @@ Tier 3 -- polish, conversion, and measurement:
 | user_experience          |     5    |    3    |
 | performance_optimization |     5    |    3    |
 | analytics_tracking       |     4    |    2    |
+| social_presence          |     4    |    2    |
 +--------------------------+----------+---------+
 
-The weights are deliberately front-loaded: the four Tier 1 checks alone can
-cost 54 points, so a site that is slow, insecure, unreachable and unusable on
-a phone lands in F territory no matter how well it does on the rest. All 16
-checks at critical sum to 129, which is more than 100 -- the score floors at
-0 rather than going negative.
+social_presence is weighted lowest of all, and deliberately so: it is the check
+we can verify least (Facebook and Instagram hide their data behind a login) and
+the one that matters least to a plumber whose customers find them on Google.
+
+The weights are deliberately front-loaded: the five Tier 1 checks alone can
+cost 66 points, so a business that is slow, insecure, unreachable, unusable on
+a phone and invisible on Google lands in F territory no matter how well it does
+on the rest. All 18 checks at critical sum to 145, which is more than 100 --
+the score floors at 0 rather than going negative. That floor is what makes a
+business with no website at all score 0: its 16 website checks are reported as
+not-applicable criticals, which alone sum past 100.
 
 Letter grades follow the usual US school scale:
 A 90-100, B 80-89, C 70-79, D 60-69, F below 60.
@@ -64,6 +77,7 @@ CHECK_WEIGHTS: dict[str, dict[str, int]] = {
     "ssl": {"critical": 15, "warning": 8},
     "reachability": {"critical": 12, "warning": 6},
     "mobile_rendering": {"critical": 12, "warning": 6},
+    "google_business": {"critical": 12, "warning": 6},
     # Tier 2 -- findability and usability.
     "security_headers": {"critical": 8, "warning": 4},
     "broken_links": {"critical": 8, "warning": 4},
@@ -78,6 +92,7 @@ CHECK_WEIGHTS: dict[str, dict[str, int]] = {
     "user_experience": {"critical": 5, "warning": 3},
     "performance_optimization": {"critical": 5, "warning": 3},
     "analytics_tracking": {"critical": 4, "warning": 2},
+    "social_presence": {"critical": 4, "warning": 2},
 }
 
 

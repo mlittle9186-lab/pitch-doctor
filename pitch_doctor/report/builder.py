@@ -17,8 +17,9 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from pitch_doctor.checks import WEBSITE_CHECK_IDS
 from pitch_doctor.i18n import Strings
-from pitch_doctor.models import ScanReport
+from pitch_doctor.models import ScanReport, Severity
 from pitch_doctor.scoring import CHECK_WEIGHTS
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
@@ -97,7 +98,40 @@ def _report_strings(strings: Strings, scan: ScanReport, brand: BrandInfo) -> dic
         "next_steps_cta": strings.get("report.next_steps_cta"),
         "footer_generated_by": strings.get("report.footer_generated_by", brand_name=brand.name),
         "toc_heading": strings.get("report.toc_heading"),
+        "no_website_heading": strings.get("report.no_website_heading"),
+        "no_website_intro": strings.get("report.no_website_intro"),
+        "package_heading": strings.get("report.package_heading"),
+        "package_intro": strings.get("report.package_intro"),
     }
+
+
+# Findings that mean "a customer who wants to reach you has to work for it".
+_FRICTION_CHECK_IDS = ("contact_friction", "user_experience")
+
+
+def _recommended_packages(strings: Strings, scan: ScanReport) -> list[str]:
+    """Map what the scan found onto where we'd start, in treatment order.
+
+    Diagnostic, not a pitch: each line names the problem the scan actually
+    found. A business with nothing wrong gets no lines at all rather than an
+    invented reason to buy something.
+    """
+    by_id = {check.id: check for check in scan.checks}
+
+    def failing(check_id: str) -> bool:
+        """A real, verified problem -- not a check we simply couldn't run."""
+        check = by_id.get(check_id)
+        return check is not None and check.severity != Severity.OK and not check.not_applicable
+
+    packages: list[str] = []
+    if not scan.has_website:
+        packages.append(strings.get("report.package_basic"))
+    if failing("google_business"):
+        packages.append(strings.get("report.package_growth"))
+    # Only worth raising when there *is* a site to reduce friction on.
+    if scan.has_website and any(failing(cid) for cid in _FRICTION_CHECK_IDS):
+        packages.append(strings.get("report.package_professional"))
+    return packages
 
 
 def render_html(scan: ScanReport, strings: Strings, brand: BrandInfo) -> str:
@@ -107,12 +141,25 @@ def render_html(scan: ScanReport, strings: Strings, brand: BrandInfo) -> str:
     checks_sorted = sorted(
         scan.checks, key=lambda c: SEVERITY_ORDER.get(c.severity.value, 3)
     )
+    # Website checks with nothing to inspect still count against the score, but
+    # a page each would bury the real findings under sixteen copies of the same
+    # sentence -- so they collapse into one grouped section. A *presence* check
+    # that couldn't be verified keeps its own card, because the reason is
+    # specific and worth reading.
+    not_evaluated = [
+        c for c in checks_sorted if c.not_applicable and c.id in WEBSITE_CHECK_IDS
+    ]
+    grouped_ids = {c.id for c in not_evaluated}
+    findings = [c for c in checks_sorted if c.id not in grouped_ids]
 
     context = {
         "t": _report_strings(strings, scan, brand),
         "lang": scan.lang,
         "scan": scan,
-        "checks": checks_sorted,
+        "checks": findings,
+        "not_evaluated": not_evaluated,
+        "all_checks": checks_sorted,
+        "packages": _recommended_packages(strings, scan),
         "brand": brand,
         "brand_logo_data_uri": brand.logo_data_uri,
         "score": scan.score,
@@ -134,7 +181,7 @@ def write_report(
     pdf: bool = False,
 ) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
-    slug = _slugify(scan.url)
+    slug = _report_slug(scan)
     html = render_html(scan, strings, brand)
     html_path = out_dir / f"{slug}.html"
     html_path.write_text(html, encoding="utf-8")
@@ -150,6 +197,15 @@ def _slugify(url: str) -> str:
     cleaned = url.replace("https://", "").replace("http://", "")
     cleaned = cleaned.rstrip("/")
     return "".join(c if c.isalnum() or c in "-_." else "-" for c in cleaned)
+
+
+def _report_slug(scan: ScanReport) -> str:
+    """Filename stem for the report: the domain, or the business when there's no site."""
+    if scan.url:
+        return _slugify(scan.url)
+    parts = [p for p in (scan.business_name, scan.city) if p]
+    slug = _slugify("-".join(parts)).strip("-.") if parts else ""
+    return slug or "business-audit"
 
 
 def _render_pdf(html_path: Path, pdf_path: Path) -> None:

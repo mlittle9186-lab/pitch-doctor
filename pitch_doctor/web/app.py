@@ -1,7 +1,12 @@
 """FastAPI app: a reactive search bar that runs the same scan engine the CLI
 uses and streams live progress while it works, then hands back the branded
-report. Local-only tool: no auth, no database. An in-memory job dict is fine
-because uvicorn runs this as a single process for local use.
+report. No auth. An in-memory job dict is fine because uvicorn runs this as a
+single process for local use.
+
+The one thing this layer adds on top of the engine is lead capture: the form
+requires a visitor's email before it will start a scan, and the resulting lead
+is recorded in SQLite (see ``leads.py``). None of that reaches the engine --
+the CLI still scans with no email anywhere in sight.
 """
 
 from __future__ import annotations
@@ -16,7 +21,7 @@ from typing import Literal
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
 
 from pitch_doctor.checks.runner import build_scan_context, run_all_checks
 from pitch_doctor.cli import _format_date
@@ -25,10 +30,13 @@ from pitch_doctor.models import ScanReport
 from pitch_doctor.report.builder import BrandInfo, write_report
 from pitch_doctor.report.pdf_export import html_to_pdf
 from pitch_doctor.scoring import score_and_grade
+from pitch_doctor.web.leads import init_db, leads_path, save_lead
 from pitch_doctor.web.templates import PAGE
 
 _SAFE_FILENAME = re.compile(r"[A-Za-z0-9_.-]+\.html")
 _SAFE_PDF_FILENAME = re.compile(r"[A-Za-z0-9_.-]+\.pdf")
+# Deliberately loose: this gates obvious junk, it isn't proof of deliverability.
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$")
 
 # Every string the reactive UI needs, per language. Kept separate from
 # pitch_doctor/i18n/*.json (which is the *report's* content contract) since
@@ -37,10 +45,13 @@ COPY: dict[str, dict] = {
     "en": {
         "heading": "Turn any bad website into your next client.",
         "subheading": "Scan and qualify prospects in 30 seconds.",
-        "placeholder": "example.com",
+        "placeholder": "example.com (leave blank if there's no website)",
         "cta": "Scan",
         "advanced_label": "Your information is required for your own site report",
         "lang_label": "Report language",
+        "email_label": "Your email (we'll send the report here)",
+        "business_name_label": "Business name (required if there's no website)",
+        "city_label": "City",
         "brand_name_label": "Your name",
         "brand_email_label": "Contact email",
         "brand_phone_label": "Contact phone",
@@ -48,6 +59,7 @@ COPY: dict[str, dict] = {
         "footer": "",
         "scanning_label": "Scanning…",
         "error_heading": "Couldn't finish that scan",
+        "need_target": "Enter a website URL, or a business name and city if there's no website.",
         "progress_note": "This usually takes 10-30 seconds.",
         "redirecting": "Done! Opening your report…",
         "stages": {
@@ -55,16 +67,20 @@ COPY: dict[str, dict] = {
             "http": "Fetching the page & checking SSL",
             "browser": "Loading on mobile + desktop, capturing screenshots",
             "links": "Checking links & contact info",
+            "presence": "Checking the Google listing & social profiles",
             "report": "Scoring and building your report",
         },
     },
     "es": {
         "heading": "Convierte cualquier sitio web deficiente en tu próximo cliente.",
         "subheading": "Escanea y califica prospectos en 30 segundos.",
-        "placeholder": "ejemplo.com",
+        "placeholder": "ejemplo.com (déjalo vacío si no hay sitio web)",
         "cta": "Analizar",
         "advanced_label": "Tu información es necesaria para tu propio reporte del sitio",
         "lang_label": "Idioma del reporte",
+        "email_label": "Tu correo (te enviaremos el reporte ahí)",
+        "business_name_label": "Nombre del negocio (obligatorio si no hay sitio web)",
+        "city_label": "Ciudad",
         "brand_name_label": "Tu nombre",
         "brand_email_label": "Correo de contacto",
         "brand_phone_label": "Teléfono de contacto",
@@ -72,6 +88,7 @@ COPY: dict[str, dict] = {
         "footer": "",
         "scanning_label": "Analizando…",
         "error_heading": "No se pudo completar el análisis",
+        "need_target": "Escribe la URL del sitio web, o el nombre del negocio y la ciudad si no tiene sitio web.",
         "progress_note": "Esto suele tardar entre 10 y 30 segundos.",
         "redirecting": "¡Listo! Abriendo tu reporte…",
         "stages": {
@@ -79,16 +96,20 @@ COPY: dict[str, dict] = {
             "http": "Descargando la página y revisando el SSL",
             "browser": "Cargando en móvil y escritorio, capturando pantallas",
             "links": "Revisando enlaces e información de contacto",
+            "presence": "Revisando la ficha de Google y las redes sociales",
             "report": "Calculando el puntaje y generando tu reporte",
         },
     },
     "fr": {
         "heading": "Transformez n'importe quel site web bâclé en votre prochain client.",
         "subheading": "Analysez et qualifiez les prospects en 30 secondes.",
-        "placeholder": "exemple.com",
+        "placeholder": "exemple.com (laissez vide s'il n'y a pas de site web)",
         "cta": "Analyser",
         "advanced_label": "Vos informations sont nécessaires pour votre propre rapport du site",
         "lang_label": "Langue du rapport",
+        "email_label": "Votre e-mail (nous y enverrons le rapport)",
+        "business_name_label": "Nom de l'entreprise (obligatoire s'il n'y a pas de site web)",
+        "city_label": "Ville",
         "brand_name_label": "Votre nom",
         "brand_email_label": "E-mail de contact",
         "brand_phone_label": "Téléphone de contact",
@@ -96,6 +117,7 @@ COPY: dict[str, dict] = {
         "footer": "",
         "scanning_label": "Analyse en cours…",
         "error_heading": "L'analyse n'a pas pu aboutir",
+        "need_target": "Saisissez l'URL du site web, ou le nom de l'entreprise et la ville s'il n'y a pas de site.",
         "progress_note": "Cela prend généralement 10 à 30 secondes.",
         "redirecting": "Terminé ! Ouverture de votre rapport…",
         "stages": {
@@ -103,6 +125,7 @@ COPY: dict[str, dict] = {
             "http": "Récupération de la page et vérification du SSL",
             "browser": "Chargement mobile et bureau, capture des écrans",
             "links": "Vérification des liens et des coordonnées",
+            "presence": "Vérification de la fiche Google et des réseaux sociaux",
             "report": "Calcul du score et génération du rapport",
         },
     },
@@ -110,11 +133,45 @@ COPY: dict[str, dict] = {
 
 
 class ScanRequest(BaseModel):
-    url: str
+    """A scan started from the web form.
+
+    ``email`` is the *visitor's* address -- the lead -- and is required here
+    even though the engine never sees it. ``brand_email`` is unrelated: it's
+    what gets printed on the report.
+    """
+
+    url: str | None = None
+    business_name: str | None = None
+    city: str | None = None
+    email: str
     lang: str = "en"
     brand_name: str
     brand_email: str
     brand_phone: str
+
+    @field_validator("url", "business_name", "city", mode="before")
+    @classmethod
+    def _blank_to_none(cls, value: object) -> object:
+        """An empty form field means "not provided", not an empty business name."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def _valid_email(cls, value: str) -> str:
+        value = value.strip()
+        if not _EMAIL_RE.match(value):
+            raise ValueError("a valid email address is required to generate a report")
+        return value
+
+    @model_validator(mode="after")
+    def _needs_a_target(self) -> ScanRequest:
+        if not self.url and not self.business_name:
+            raise ValueError("provide a website URL, or a business name and city")
+        if not self.url and not self.city:
+            raise ValueError("a city is required when auditing a business with no website")
+        return self
 
 
 @dataclass
@@ -128,6 +185,7 @@ class Job:
 def create_app(out_dir: Path, timeout: float = 25.0) -> FastAPI:
     app = FastAPI(title="pitch-doctor", docs_url=None, redoc_url=None)
     out_dir.mkdir(parents=True, exist_ok=True)
+    init_db(leads_path(out_dir))
     jobs: dict[str, Job] = {}
     page_html = PAGE.replace("__COPY_JSON__", json.dumps(COPY))
 
@@ -146,7 +204,11 @@ def create_app(out_dir: Path, timeout: float = 25.0) -> FastAPI:
             try:
                 strings = load_strings(lang)
                 ctx = await build_scan_context(
-                    req.url, timeout=timeout, on_progress=lambda stage: setattr(job, "stage", stage)
+                    req.url,
+                    timeout=timeout,
+                    on_progress=lambda stage: setattr(job, "stage", stage),
+                    business_name=req.business_name,
+                    city=req.city,
                 )
                 job.stage = "report"
                 checks = run_all_checks(ctx, strings)
@@ -161,6 +223,9 @@ def create_app(out_dir: Path, timeout: float = 25.0) -> FastAPI:
                     desktop_screenshot_b64=ctx.desktop_screenshot_b64,
                     scanned_at=_format_date(lang),
                     error=ctx.error,
+                    business_name=ctx.business_name,
+                    city=ctx.city,
+                    has_website=ctx.has_website,
                 )
                 brand = BrandInfo(
                     name=req.brand_name or "Your Agency",
@@ -168,6 +233,18 @@ def create_app(out_dir: Path, timeout: float = 25.0) -> FastAPI:
                     phone=req.brand_phone or "281-468-9892",
                 )
                 html_path = write_report(scan_report, strings, brand, out_dir)
+                # Recorded once the score exists, so the lead carries the
+                # result that was actually delivered. Blocking sqlite writes go
+                # off-thread to keep the event loop free for other scans.
+                await asyncio.to_thread(
+                    save_lead,
+                    leads_path(out_dir),
+                    email=req.email,
+                    business_name=ctx.business_name,
+                    city=ctx.city,
+                    url=req.url,
+                    score=score,
+                )
                 job.report_url = f"/reports/{html_path.name}"
                 job.status = "done"
             except Exception as exc:  # noqa: BLE001 -- surface any failure to the polling client

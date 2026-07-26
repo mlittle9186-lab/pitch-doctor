@@ -149,7 +149,6 @@ PAGE = """<!doctype html>
           autocorrect="off"
           autocapitalize="off"
           spellcheck="false"
-          required
           autofocus
         >
         <button type="submit" id="submit-btn"></button>
@@ -157,6 +156,18 @@ PAGE = """<!doctype html>
       <details open>
         <summary id="advanced-label"></summary>
         <div class="fields">
+          <div>
+            <label id="email-label"></label>
+            <input type="email" name="email" id="email-input" required>
+          </div>
+          <div>
+            <label id="business-name-label"></label>
+            <input type="text" name="business_name" id="business-name-input">
+          </div>
+          <div>
+            <label id="city-label"></label>
+            <input type="text" name="city" id="city-input">
+          </div>
           <div>
             <label id="lang-label"></label>
             <select name="lang" id="lang-select">
@@ -193,7 +204,7 @@ PAGE = """<!doctype html>
 
 <script>
 const COPY = __COPY_JSON__;
-const STAGES = ["dns", "http", "browser", "links", "report"];
+const STAGES = ["dns", "http", "browser", "links", "presence", "report"];
 
 const form = document.getElementById('scan-form');
 const urlInput = document.getElementById('url-input');
@@ -221,6 +232,9 @@ function applyCopy() {
   document.getElementById('url-input').placeholder = c.placeholder;
   document.getElementById('submit-btn').textContent = c.cta;
   document.getElementById('advanced-label').textContent = c.advanced_label;
+  document.getElementById('email-label').textContent = c.email_label;
+  document.getElementById('business-name-label').textContent = c.business_name_label;
+  document.getElementById('city-label').textContent = c.city_label;
   document.getElementById('lang-label').textContent = c.lang_label;
   document.getElementById('brand-name-label').textContent = c.brand_name_label;
   document.getElementById('brand-email-label').textContent = c.brand_email_label;
@@ -230,8 +244,14 @@ function applyCopy() {
   renderStageList(c);
 }
 
-function renderStageList(c) {
-  stageList.innerHTML = STAGES.map(function (key) {
+// Which stages this scan will actually go through. A business with no website
+// skips straight to the presence lookups, so showing the website stages would
+// leave them stuck and unexplained.
+let activeStages = STAGES;
+
+function renderStageList(c, stages) {
+  activeStages = stages || STAGES;
+  stageList.innerHTML = activeStages.map(function (key) {
     return '<div class="stage" data-stage="' + key + '"><div class="stage-dot"></div>' +
       '<div>' + c.stages[key] + '</div></div>';
   }).join('');
@@ -263,7 +283,7 @@ phoneInput.addEventListener('blur', function (e) {
 });
 
 function setStage(stageKey) {
-  const idx = STAGES.indexOf(stageKey);
+  const idx = activeStages.indexOf(stageKey);
   document.querySelectorAll('.stage').forEach(function (el, i) {
     el.classList.remove('active', 'done');
     if (idx === -1) return;
@@ -277,6 +297,17 @@ function markAllDone() {
     el.classList.remove('active');
     el.classList.add('done');
   });
+}
+
+// FastAPI reports validation failures as a list of objects, which would
+// otherwise render as "[object Object]" in the error box.
+function errorMessage(data) {
+  if (!data) return 'could not start scan';
+  if (typeof data.detail === 'string') return data.detail;
+  if (Array.isArray(data.detail)) {
+    return data.detail.map(function (d) { return d.msg || String(d); }).join('; ');
+  }
+  return 'could not start scan';
 }
 
 function showError(message) {
@@ -316,8 +347,22 @@ form.addEventListener('submit', async function (evt) {
   submitBtn.disabled = true;
   submitBtn.textContent = c.scanning_label;
 
+  const businessName = document.getElementById('business-name-input').value.trim();
+  const city = document.getElementById('city-input').value.trim();
+  const url = urlInput.value.trim();
+
+  // A business with no website is a valid thing to audit, but we still need
+  // to know *which* business.
+  if (!url && !(businessName && city)) {
+    showError(c.need_target);
+    return;
+  }
+
   const payload = {
-    url: withScheme(urlInput.value),
+    url: url ? withScheme(url) : null,
+    business_name: businessName || null,
+    city: city || null,
+    email: document.getElementById('email-input').value,
     lang: langSelect.value,
     brand_name: document.getElementById('brand-name-input').value,
     brand_email: document.getElementById('brand-email-input').value,
@@ -331,13 +376,14 @@ form.addEventListener('submit', async function (evt) {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'could not start scan');
+    if (!res.ok) throw new Error(errorMessage(data));
 
     form.style.display = 'none';
     progressPanel.classList.add('active');
-    progressUrl.textContent = payload.url;
+    progressUrl.textContent = payload.url || (businessName + ', ' + city);
     document.getElementById('progress-note').textContent = c.progress_note;
-    setStage('dns');
+    renderStageList(c, payload.url ? STAGES : ['presence', 'report']);
+    setStage(payload.url ? 'dns' : 'presence');
     poll(data.job_id);
   } catch (err) {
     showError(String(err));

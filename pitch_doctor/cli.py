@@ -64,11 +64,28 @@ BrandLogoOption = typer.Option(None, "--brand-logo", help="Path to a logo image 
 JsonOption = typer.Option(False, "--json", help="Also dump raw findings as JSON.")
 TimeoutOption = typer.Option(20.0, "--timeout", help="Per-site timeout in seconds.")
 PdfOption = typer.Option(False, "--pdf", help="Also render a PDF using headless Chromium.")
+UrlOption = typer.Option(
+    None, "--url", help="The website URL to audit. Omit it to audit a business with no website."
+)
+BusinessNameOption = typer.Option(
+    None, "--business-name", help="Business name. Required when no URL is given."
+)
+CityOption = typer.Option(
+    None, "--city", help="City the business operates in. Required when no URL is given."
+)
 
 
-async def _scan_one(url: str, lang: str, timeout: float) -> ScanReport:
+async def _scan_one(
+    url: str | None,
+    lang: str,
+    timeout: float,
+    business_name: str | None = None,
+    city: str | None = None,
+) -> ScanReport:
     strings = load_strings(lang)
-    ctx = await build_scan_context(url, timeout=timeout)
+    ctx = await build_scan_context(
+        url, timeout=timeout, business_name=business_name, city=city
+    )
     checks = run_all_checks(ctx, strings)
     score, grade = score_and_grade(checks)
     return ScanReport(
@@ -81,6 +98,10 @@ async def _scan_one(url: str, lang: str, timeout: float) -> ScanReport:
         desktop_screenshot_b64=ctx.desktop_screenshot_b64,
         scanned_at=_format_date(lang),
         error=ctx.error,
+        # The page often names the business better than the caller did.
+        business_name=ctx.business_name,
+        city=ctx.city,
+        has_website=ctx.has_website,
     )
 
 
@@ -97,6 +118,9 @@ def _emit_report(scan: ScanReport, lang: str, out: Path, brand: BrandInfo, json_
             json.dumps(
                 {
                     "url": scan.url,
+                    "business_name": scan.business_name,
+                    "city": scan.city,
+                    "has_website": scan.has_website,
                     "score": scan.score,
                     "grade": scan.grade,
                     "checks": [c.to_dict() for c in scan.checks],
@@ -112,7 +136,12 @@ def _emit_report(scan: ScanReport, lang: str, out: Path, brand: BrandInfo, json_
 
 @app.command()
 def scan(
-    url: str = typer.Argument(..., help="The website URL to audit."),
+    url_arg: str | None = typer.Argument(
+        None, metavar="[URL]", help="The website URL to audit. Same as --url."
+    ),
+    url: str | None = UrlOption,
+    business_name: str | None = BusinessNameOption,
+    city: str | None = CityOption,
     lang: str = LangOption,
     out: Path = OutOption,
     brand_name: str = BrandNameOption,
@@ -123,17 +152,33 @@ def scan(
     timeout: float = TimeoutOption,
     pdf: bool = PdfOption,
 ) -> None:
-    """Scan a single website and generate a client-ready audit report."""
+    """Audit a business's digital presence and generate a client-ready report.
+
+    Pass a URL to audit a website, or just --business-name and --city to audit
+    a business that doesn't have one yet.
+    """
+    # The URL stays accepted positionally so `pitch-doctor scan example.com`
+    # keeps working exactly as it always has, while --url reads better next to
+    # --business-name for the no-website case.
+    target = url or url_arg
+    if not target and not business_name:
+        raise typer.BadParameter(
+            "Give a URL, or --business-name and --city for a business with no website."
+        )
+    if not target and not city:
+        raise typer.BadParameter("--city is required when auditing a business with no URL.")
+
     strings = load_strings(lang)
     brand = _brand_from_options(brand_name, brand_email, brand_phone, brand_logo)
+    label = target or f"{business_name} ({city})"
 
-    with console.status(strings.get("cli.scanning", url=url), spinner="dots"):
-        scan_report = asyncio.run(_scan_one(url, lang, timeout))
+    with console.status(strings.get("cli.scanning", url=label), spinner="dots"):
+        scan_report = asyncio.run(_scan_one(target, lang, timeout, business_name, city))
 
     if scan_report.error:
-        console.print(f"[yellow]{strings.get('cli.unreachable_error', url=url, detail=scan_report.error)}[/yellow]")
+        console.print(f"[yellow]{strings.get('cli.unreachable_error', url=label, detail=scan_report.error)}[/yellow]")
 
-    console.print(strings.get("cli.scan_done", url=url, score=scan_report.score, grade=scan_report.grade))
+    console.print(strings.get("cli.scan_done", url=label, score=scan_report.score, grade=scan_report.grade))
     _emit_report(scan_report, lang, out, brand, json_out, pdf)
 
 

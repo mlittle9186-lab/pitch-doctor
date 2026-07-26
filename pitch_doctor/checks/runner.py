@@ -13,6 +13,7 @@ import base64
 import socket
 import time
 from collections.abc import Callable
+from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -20,9 +21,17 @@ from playwright.async_api import Browser, async_playwright
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from pitch_doctor.browser_launch import chromium_launch_kwargs
-from pitch_doctor.checks import ALL_CHECKS
-from pitch_doctor.checks.base import soupify
+from pitch_doctor.checks import ALL_CHECKS, WEBSITE_CHECK_IDS
+from pitch_doctor.checks.base import (
+    extract_business_name,
+    extract_city,
+    find_social_profile_links,
+    not_applicable_result,
+    soupify,
+)
+from pitch_doctor.checks.social_presence import REACHABLE, UNVERIFIABLE
 from pitch_doctor.i18n import Strings
+from pitch_doctor.integrations.places import lookup_business
 from pitch_doctor.models import CheckResult, ScanContext
 
 USER_AGENT = (
@@ -33,6 +42,12 @@ MOBILE_VIEWPORT = {"width": 390, "height": 844}
 DESKTOP_VIEWPORT = {"width": 1440, "height": 900}
 MAX_LINKS_TO_CHECK = 25
 LINK_CHECK_CONCURRENCY = 8
+
+# Social platforms answer anonymous requests with login walls and bot checks as
+# often as with the real page, so a probe is capped short and a failure means
+# "we can't tell", never "this profile doesn't exist".
+SOCIAL_PROBE_TIMEOUT_SECONDS = 8.0
+SOCIAL_LOGIN_WALL_MARKERS = ("/login", "/accounts/login", "checkpoint")
 
 # A representative mid-range mobile connection (roughly "Regular 4G"), not a
 # worst-case one. Earlier versions throttled to Lighthouse's aggressive "Slow
@@ -276,19 +291,72 @@ async def _capture_browser_signals(url: str, timeout: float) -> dict:
     return result
 
 
+async def _probe_social_profiles(links: dict[str, str], timeout: float) -> dict[str, str]:
+    """Check whether each linked social profile loads for a logged-out visitor.
+
+    Anything other than a clean 2xx on the profile itself -- a redirect to a
+    login page, a bot check, a network error -- is recorded as unverifiable.
+    We never authenticate, so "unverifiable" is the honest answer, and the
+    check treats it as such rather than as a missing profile.
+    """
+    if not links:
+        return {}
+
+    async def probe(platform: str, url: str) -> tuple[str, str]:
+        try:
+            async with httpx.AsyncClient(
+                timeout=timeout,
+                headers={"User-Agent": USER_AGENT},
+                follow_redirects=True,
+                verify=False,
+            ) as client:
+                response = await client.get(url)
+        except httpx.HTTPError:
+            return platform, UNVERIFIABLE
+
+        final = str(response.url).lower()
+        if response.status_code >= 400:
+            return platform, UNVERIFIABLE
+        if any(marker in final for marker in SOCIAL_LOGIN_WALL_MARKERS):
+            return platform, UNVERIFIABLE
+        return platform, REACHABLE
+
+    results = await asyncio.gather(
+        *(probe(platform, url) for platform, url in links.items())
+    )
+    return dict(results)
+
+
 async def build_scan_context(
-    url: str,
+    url: str | None = None,
     timeout: float = 20.0,
     on_progress: Callable[[str], None] | None = None,
+    *,
+    business_name: str | None = None,
+    city: str | None = None,
+    places_cache_path: Path | None = None,
 ) -> ScanContext:
     """Gathers a ScanContext. ``on_progress``, if given, is called synchronously
-    with one of: "dns", "http", "browser", "links" as each stage starts --
-    used by the web UI to show live scan progress.
+    with one of: "dns", "http", "browser", "links", "presence" as each stage
+    starts -- used by the web UI to show live scan progress.
+
+    ``url`` may be None: a business with no website at all is a valid -- and
+    for a freelancer, the most valuable -- thing to audit. In that case every
+    website stage is skipped and only the presence lookups run.
     """
 
     def notify(stage: str) -> None:
         if on_progress is not None:
             on_progress(stage)
+
+    if not url or not url.strip():
+        return await _build_websiteless_context(
+            business_name=business_name,
+            city=city,
+            timeout=timeout,
+            notify=notify,
+            places_cache_path=places_cache_path,
+        )
 
     url = normalize_url(url)
     hostname = urlparse(url).netloc.split(":")[0]
@@ -328,6 +396,21 @@ async def build_scan_context(
             _check_www_mismatch(final_url, timeout),
         )
 
+    # The page usually knows the business's own name and city better than the
+    # caller does, so only fall back to what was passed in.
+    soup = soupify(html) if html else None
+    resolved_name = business_name or (extract_business_name(soup) if soup else None)
+    resolved_city = city or (extract_city(soup) if soup else None)
+
+    notify("presence")
+    social_links = find_social_profile_links(soup) if soup else {}
+    gbp, social_probes = await asyncio.gather(
+        lookup_business(
+            resolved_name, resolved_city, timeout=timeout, cache_path=places_cache_path
+        ),
+        _probe_social_profiles(social_links, min(SOCIAL_PROBE_TIMEOUT_SECONDS, timeout)),
+    )
+
     return ScanContext(
         url=url,
         final_url=final_url,
@@ -348,8 +431,68 @@ async def build_scan_context(
         www_mismatch=www_mismatch,
         timeout_seconds=timeout,
         error=http_data.get("error"),
+        business_name=resolved_name,
+        city=resolved_city,
+        has_website=True,
+        gbp=gbp,
+        social_probes=social_probes,
+    )
+
+
+async def _build_websiteless_context(
+    *,
+    business_name: str | None,
+    city: str | None,
+    timeout: float,
+    notify: Callable[[str], None],
+    places_cache_path: Path | None,
+) -> ScanContext:
+    """A ScanContext for a business with no website: presence lookups only."""
+    notify("presence")
+    gbp = await lookup_business(
+        business_name, city, timeout=timeout, cache_path=places_cache_path
+    )
+    return ScanContext(
+        url=None,
+        final_url="",
+        html="",
+        status_code=None,
+        redirect_chain=[],
+        headers={},
+        load_time_seconds=None,
+        has_valid_ssl=False,
+        ssl_error=None,
+        mobile_screenshot_b64=None,
+        desktop_screenshot_b64=None,
+        mobile_overflow_px=None,
+        viewport_meta_present=False,
+        internal_links=[],
+        broken_links=[],
+        dns_resolves=False,
+        timeout_seconds=timeout,
+        business_name=business_name,
+        city=city,
+        has_website=False,
+        gbp=gbp,
     )
 
 
 def run_all_checks(ctx: ScanContext, strings: Strings) -> list[CheckResult]:
-    return [module.evaluate(ctx, strings) for module in ALL_CHECKS]
+    """Every check's verdict, in report order.
+
+    When there is no website, the website checks are still *reported* -- as
+    not-applicable criticals. Feeding them an empty page instead would fill the
+    report with findings like "no meta description" about a site that does not
+    exist, and a business that has no website has genuinely forfeited every one
+    of those points. Each module is still consulted for its own localized name
+    so the collapsed list reads correctly in every language.
+    """
+    results: list[CheckResult] = []
+    for module in ALL_CHECKS:
+        result = module.evaluate(ctx, strings)
+        if not ctx.has_website and module.CHECK_ID in WEBSITE_CHECK_IDS:
+            result = not_applicable_result(
+                module.CHECK_ID, result.name, strings, reason_key="no_website"
+            )
+        results.append(result)
+    return results

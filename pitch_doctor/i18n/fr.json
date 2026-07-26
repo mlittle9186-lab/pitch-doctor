@@ -34,7 +34,17 @@
     "next_steps_body": "",
     "next_steps_cta": "Parlez à Mario",
     "footer_generated_by": "Généré par Zero Digit X - Mario Alvarez avec pitch-doctor",
-    "toc_heading": "Sommaire"
+    "toc_heading": "Sommaire",
+    "no_website_heading": "No website to check",
+    "no_website_intro": "The checks below all inspect a business website. Since there isn't one, each is counted as a missed opportunity rather than a passing grade.",
+    "no_website_found": "{check} could not be checked: this business has no website of its own.",
+    "no_website_impact": "This business has no website of its own -- the single biggest missed opportunity for bringing in customers 24/7. Every search, every referral, and every Google listing visitor currently has nowhere to land.",
+    "no_website_benefit": "Even a single well-built page gives you somewhere to send customers, something Google can rank, and a way to be found at 9pm when the phone isn't answered.",
+    "package_heading": "Where we'd start",
+    "package_intro": "Based on what this scan found, here's what we'd treat first -- in the order that moves your phone-call volume the fastest.",
+    "package_basic": "Basic ($500) -- a simple, fast, phone-friendly website, so someone searching for you at 9pm finds you instead of a competitor.",
+    "package_growth": "Growth -- claim and fill out your Google Business Profile: hours, photos, categories, and a steady flow of reviews that actually get answered.",
+    "package_professional": "Professional ($1,000) -- make contacting and booking you effortless: tap-to-call, a short form, and an obvious next step on every page."
   },
   "checks": {
     "load_speed": {
@@ -132,6 +142,41 @@
       "detail_dns_failure": "Le DNS ne s'est pas résolu pour ce domaine.",
       "detail_redirect_chain": "Le site redirige à travers {hops} sauts avant de finir de charger.",
       "detail_www_mismatch": "Les versions www et sans www du domaine se comportent de façon incohérente."
+    },
+    "google_business": {
+      "name": "Google Business Profile",
+      "impact_critical": "We couldn't find a Google Business Profile for this business. When someone nearby searches for what you do, you simply aren't among the results -- and for a local business that listing is usually the single biggest source of calls.",
+      "impact_warning": "Your Google listing exists but is incomplete, so it loses to more complete competitor listings sitting right next to it in the results.",
+      "impact_ok": "Your Google listing is complete and carries real customer proof -- exactly what convinces a nearby searcher to pick you.",
+      "impact_unverified": "We couldn't verify your Google listing during this scan, so treat this section as unchecked rather than as good or bad news.",
+      "found_critical": "{detail}",
+      "found_warning": "{detail}",
+      "found_ok": "Profile found for {name}: {rating} stars from {count} review(s), {photos} photo(s), and published hours.",
+      "found_unverified": "The Google Business Profile could not be checked: {detail}.",
+      "benefit": "A complete Google listing -- right category, real hours, current photos, and reviews that get answered -- puts your business in front of people who are already looking to buy nearby.",
+      "detail_not_found": "No Google Business Profile matched \"{query}\".",
+      "detail_not_attempted": "no lookup was performed",
+      "detail_weak_profile": "Profile found for {name}, but: {issues}.",
+      "issue_closed": "the listing is marked permanently closed",
+      "issue_no_category": "no business category is set",
+      "issue_no_hours": "no business hours are published",
+      "issue_no_photos": "the profile has no photos",
+      "issue_no_reviews": "the profile has no customer reviews yet",
+      "issue_few_reviews": "only {count} review(s) so far",
+      "issue_low_rating": "an average rating of {rating} stars",
+      "issue_replies_unknown": "Whether those reviews get replies could not be checked -- Google's API does not expose owner responses."
+    },
+    "social_presence": {
+      "name": "Social Media Presence",
+      "impact_critical": "This business has no findable social presence at all, so word-of-mouth has nowhere to accumulate.",
+      "impact_warning": "We found no social profiles linked from this business, so customers who look for you on Facebook or Instagram before calling come up empty.",
+      "impact_ok": "Customers who go looking for you on social media before calling can actually find you.",
+      "found_critical": "No social media presence could be found.",
+      "found_warning": "No links to a Facebook or Instagram profile were found.",
+      "found_ok": "Social profiles found: {platforms}.",
+      "benefit": "A linked, current social profile gives cautious customers a second place to confirm you're real and active before they pick up the phone.",
+      "detail_no_website": "There is no website to look for social links on, so this could only be checked as far as public information allows.",
+      "issue_unverifiable": "Could not confirm these profiles are live without logging in, so they are reported as unverified rather than as problems: {platforms}."
     }
   }
 }

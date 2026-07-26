@@ -18,6 +18,12 @@ class CheckResult:
 
     ``id`` must match a key under ``checks`` in the i18n string files.
     ``impact`` and ``name`` are already-localized, ready-to-render strings.
+
+    ``not_applicable`` marks a check that could not be evaluated at all
+    because the thing it inspects doesn't exist -- today that means every
+    website check when the business has no website. Such a result still
+    carries a real severity (and therefore a real deduction), it is just
+    rendered compactly instead of as a full finding page.
     """
 
     id: str
@@ -27,6 +33,7 @@ class CheckResult:
     impact: str
     recommendation: str
     screenshots: list[str] = field(default_factory=list)
+    not_applicable: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -37,7 +44,38 @@ class CheckResult:
             "impact": self.impact,
             "recommendation": self.recommendation,
             "screenshots": self.screenshots,
+            "not_applicable": self.not_applicable,
         }
+
+
+@dataclass
+class GbpProfile:
+    """What we could learn about a business's Google Business Profile.
+
+    ``found`` false with ``error`` set means the lookup itself failed (no API
+    key, quota, network) -- a degraded state the check reports honestly rather
+    than as a missing profile. ``found`` false with no ``error`` means the
+    lookup worked and genuinely matched nothing.
+
+    ``reviews_without_reply`` is ``None`` whenever owner replies aren't
+    available: the Places API does not expose them at any tier today.
+    """
+
+    found: bool = False
+    place_id: str | None = None
+    name: str | None = None
+    formatted_address: str | None = None
+    primary_type: str | None = None
+    business_status: str | None = None
+    has_hours: bool = False
+    photo_count: int = 0
+    rating: float | None = None
+    review_count: int = 0
+    reviews_without_reply: int | None = None
+    website_uri: str | None = None
+    phone: str | None = None
+    error: str | None = None
+    from_cache: bool = False
 
 
 @dataclass
@@ -69,10 +107,24 @@ class ScanContext:
     timeout_seconds: float = 20.0
     error: str | None = None
 
+    # Business identity. Supplied by the caller, or inferred from the page's
+    # LocalBusiness JSON-LD / og:site_name / <title> when only a URL is given.
+    business_name: str | None = None
+    city: str | None = None
+
+    # False when the scan was started from a business name alone. Every
+    # website check is then reported as not applicable instead of being fed
+    # empty HTML, which would produce a page of misleading findings.
+    has_website: bool = True
+
+    # Presence data that lives outside the website itself.
+    gbp: GbpProfile | None = None
+    social_probes: dict[str, str] = field(default_factory=dict)
+
 
 @dataclass
 class ScanReport:
-    url: str
+    url: str | None
     lang: str
     checks: list[CheckResult]
     score: int
@@ -81,3 +133,13 @@ class ScanReport:
     desktop_screenshot_b64: str | None = None
     scanned_at: str = ""
     error: str | None = None
+    business_name: str | None = None
+    city: str | None = None
+    has_website: bool = True
+
+    @property
+    def display_name(self) -> str:
+        """What to title the report with: the business, falling back to the URL."""
+        if self.business_name and self.city:
+            return f"{self.business_name} - {self.city}"
+        return self.business_name or self.url or ""

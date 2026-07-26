@@ -39,15 +39,51 @@ def test_score_never_goes_below_zero():
 
 
 def test_tier_one_alone_is_a_failing_grade():
-    # A site that is slow, insecure, unreachable and broken on mobile fails
-    # regardless of how it does on the other twelve checks.
+    # A business that is slow, insecure, unreachable, broken on mobile and
+    # invisible on Google fails regardless of the other thirteen checks.
     checks = [
         _result(cid, Severity.CRITICAL)
-        for cid in ("load_speed", "ssl", "reachability", "mobile_rendering")
+        for cid in (
+            "load_speed",
+            "ssl",
+            "reachability",
+            "mobile_rendering",
+            "google_business",
+        )
     ]
     score, grade = score_and_grade(checks)
-    assert score == 46
+    assert score == 34
     assert grade == "F"
+
+
+def test_google_business_outweighs_every_tier_two_check():
+    # For a local business the Google listing is often the only thing a nearby
+    # customer sees, so it has to cost more than an on-site nicety.
+    assert CHECK_WEIGHTS["google_business"]["critical"] > CHECK_WEIGHTS["seo_advanced"]["critical"]
+    assert CHECK_WEIGHTS["google_business"]["critical"] == 12
+
+
+def test_social_presence_is_the_lightest_check():
+    # It's the one we can verify least, so it must never dominate a score.
+    lightest = min(w["critical"] for w in CHECK_WEIGHTS.values())
+    assert CHECK_WEIGHTS["social_presence"]["critical"] == lightest
+
+
+def test_a_missing_google_profile_alone_is_not_a_failing_grade():
+    # A business whose only problem is an unclaimed listing still has a
+    # working website -- the report should say "fix this", not "start over".
+    score, grade = score_and_grade([_result("google_business", Severity.CRITICAL)])
+    assert score == 88
+    assert grade == "B"
+
+
+def test_the_sixteen_website_checks_alone_floor_the_score_at_zero():
+    # This is what a business with no website scores: every website check is
+    # reported as a not-applicable critical, which sums past 100 on its own.
+    from pitch_doctor.checks import WEBSITE_CHECK_IDS
+
+    checks = [_result(cid, Severity.CRITICAL) for cid in WEBSITE_CHECK_IDS]
+    assert compute_score(checks) == 0
 
 
 def test_grade_bands():

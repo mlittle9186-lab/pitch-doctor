@@ -34,7 +34,17 @@
     "next_steps_body": "",
     "next_steps_cta": "Habla con Mario",
     "footer_generated_by": "Generado por Zero Digit X - Mario Alvarez con pitch-doctor",
-    "toc_heading": "Contenido"
+    "toc_heading": "Contenido",
+    "no_website_heading": "No hay sitio web que revisar",
+    "no_website_intro": "Los puntos siguientes revisan el sitio web del negocio. Como no existe, cada uno cuenta como una oportunidad perdida, no como un punto aprobado.",
+    "no_website_found": "No se pudo revisar {check}: este negocio no tiene sitio web propio.",
+    "no_website_impact": "Este negocio no tiene sitio web propio: es la mayor oportunidad perdida de captación 24/7. Cada búsqueda, cada recomendación y cada visitante de la ficha de Google hoy no tiene a dónde llegar.",
+    "no_website_benefit": "Incluso una sola página bien hecha te da un lugar a donde enviar clientes, algo que Google pueda posicionar y una forma de que te encuentren a las 9 de la noche, cuando nadie contesta el teléfono.",
+    "package_heading": "Por dónde empezaríamos",
+    "package_intro": "Según lo que encontró este análisis, esto es lo que atenderíamos primero, en el orden que aumenta más rápido tus llamadas.",
+    "package_basic": "Basic ($500): un sitio web sencillo, rápido y pensado para celulares, para que quien te busque a las 9 de la noche te encuentre a ti y no a la competencia.",
+    "package_growth": "Growth: reclamar y completar tu ficha de Google Business: horarios, fotos, categorías y un flujo constante de reseñas que sí se responden.",
+    "package_professional": "Professional ($1,000): que contactarte y reservar contigo sea inmediato: llamada con un toque, un formulario corto y un siguiente paso claro en cada página."
   },
   "checks": {
     "load_speed": {
@@ -132,6 +142,41 @@
       "detail_dns_failure": "El DNS no resolvió para este dominio.",
       "detail_redirect_chain": "El sitio redirige a través de {hops} saltos antes de terminar de cargar.",
       "detail_www_mismatch": "Las versiones www y sin www del dominio se comportan de forma inconsistente."
+    },
+    "google_business": {
+      "name": "Ficha de Google Business",
+      "impact_critical": "No encontramos una ficha de Google Business para este negocio. Cuando alguien cerca busca lo que ofreces, simplemente no apareces entre los resultados, y para un negocio local esa ficha suele ser la mayor fuente de llamadas.",
+      "impact_warning": "Tu ficha de Google existe pero está incompleta, así que pierde frente a las fichas más completas de la competencia que aparecen justo al lado en los resultados.",
+      "impact_ok": "Tu ficha de Google está completa y respaldada por clientes reales: exactamente lo que convence a alguien que busca cerca de elegirte.",
+      "impact_unverified": "No pudimos verificar tu ficha de Google durante este análisis, así que toma esta sección como no revisada, ni buena ni mala noticia.",
+      "found_critical": "{detail}",
+      "found_warning": "{detail}",
+      "found_ok": "Ficha encontrada para {name}: {rating} estrellas de {count} reseña(s), {photos} foto(s) y horarios publicados.",
+      "found_unverified": "No se pudo revisar la ficha de Google Business: {detail}.",
+      "benefit": "Una ficha de Google completa -con la categoría correcta, horarios reales, fotos actuales y reseñas respondidas- pone tu negocio frente a personas que ya están buscando comprar cerca de ti.",
+      "detail_not_found": "Ninguna ficha de Google Business coincidió con \"{query}\".",
+      "detail_not_attempted": "no se realizó ninguna búsqueda",
+      "detail_weak_profile": "Ficha encontrada para {name}, pero: {issues}.",
+      "issue_closed": "la ficha está marcada como cerrada permanentemente",
+      "issue_no_category": "no tiene categoría de negocio definida",
+      "issue_no_hours": "no tiene horarios publicados",
+      "issue_no_photos": "la ficha no tiene fotos",
+      "issue_no_reviews": "la ficha aún no tiene reseñas de clientes",
+      "issue_few_reviews": "solo {count} reseña(s) hasta ahora",
+      "issue_low_rating": "una calificación promedio de {rating} estrellas",
+      "issue_replies_unknown": "No se pudo revisar si esas reseñas reciben respuesta: la API de Google no expone las respuestas del propietario."
+    },
+    "social_presence": {
+      "name": "Presencia en Redes Sociales",
+      "impact_critical": "Este negocio no tiene ninguna presencia localizable en redes sociales, así que la recomendación de boca en boca no tiene dónde acumularse.",
+      "impact_warning": "No encontramos perfiles de redes sociales enlazados desde este negocio, así que los clientes que te buscan en Facebook o Instagram antes de llamar no encuentran nada.",
+      "impact_ok": "Los clientes que te buscan en redes sociales antes de llamar sí pueden encontrarte.",
+      "found_critical": "No se pudo encontrar ninguna presencia en redes sociales.",
+      "found_warning": "No se encontraron enlaces a un perfil de Facebook o Instagram.",
+      "found_ok": "Perfiles sociales encontrados: {platforms}.",
+      "benefit": "Un perfil social enlazado y actualizado le da a los clientes desconfiados un segundo lugar donde confirmar que existes y estás activo antes de levantar el teléfono.",
+      "detail_no_website": "No hay sitio web donde buscar enlaces a redes sociales, así que esto solo se pudo revisar hasta donde permite la información pública.",
+      "issue_unverifiable": "No se pudo confirmar que estos perfiles estén activos sin iniciar sesión, así que se reportan como no verificados y no como problemas: {platforms}."
     }
   }
 }
