@@ -41,6 +41,8 @@ def nitro_write_report(*args,**kwargs):
         "are costing you customers right now.":"can weaken visibility, trust, and conversions.",
         "GDPR &amp; Legal Compliance":"Privacy &amp; Legal Basics","GDPR & Legal Compliance":"Privacy & Legal Basics"," (GDPR requirement)":""," (GDPR/ePrivacy requirement)":""," (legal protection)":"",
         "Your site lacks 3 critical legal compliance requirements.":"Your site is missing several common privacy and policy disclosures.",
+        "You're at risk for GDPR fines (up to €20M) and legal action.":"Privacy and disclosure requirements vary by location and business type; these missing items are worth reviewing for compliance and visitor trust.",
+        "You’re at risk for GDPR fines (up to €20M) and legal action.":"Privacy and disclosure requirements vary by location and business type; these missing items are worth reviewing for compliance and visitor trust.",
         "Adding privacy policies, terms, cookie notices, and contact methods protects your business legally and builds visitor trust.":"Clear privacy and policy information can strengthen visitor trust and help address requirements that apply to your business and location.",
         "Your site is accessible to people with disabilities and complies with WCAG 2.1 standards.":"This automated scan found several positive accessibility signals. A full WCAG 2.1 conformance review requires additional manual testing.",
         "Pages are slow, bandwidth-heavy, and fail Core Web Vitals.":"These patterns can add page weight and hurt loading performance, especially on slower connections.",
@@ -53,8 +55,9 @@ def nitro_write_report(*args,**kwargs):
     }
     for old,new in replacements.items(): html=html.replace(old,new)
 
-    # HTML tags can split report sentences, so strip the EU fine threat even when markup sits between words.
-    html=re.sub(r"You(?:'|’)re\s*(?:<[^>]+>\s*)*at risk for\s*(?:<[^>]+>\s*)*GDPR fines\s*(?:<[^>]+>\s*)*\(up to €20M\)\s*(?:<[^>]+>\s*)*and legal action\.","Privacy and disclosure requirements vary by location and business type; these missing items are worth reviewing for compliance and visitor trust.",html,flags=re.I)
+    # Final safety net: if upstream ever emits the EU fine sentence in any form,
+    # remove the entire claim by its distinctive GDPR/fine wording.
+    html=re.sub(r"[^<]{0,20}GDPR fines[^<]{0,100}legal action\."," Privacy and disclosure requirements vary by location and business type; these missing items are worth reviewing for compliance and visitor trust.",html,flags=re.I)
     html=re.sub(r"Nitro 605 Studios\s+at\s+Nitro 605\s*Studios\s+for updating your website","Ready to fix what this audit found? Nitro 605 Studios can handle the modernization work.",html,flags=re.I)
     html=re.sub(r"Contact\s+Nitro 605 Studios\s+at\s+Nitro 605 Studios[^<]*","Ready to fix what this audit found? Nitro 605 Studios can handle the modernization work.",html,flags=re.I)
     html=html.replace("--emerald: #10b981;",f"--emerald: {MANGO};").replace("--emerald-dark: #047857;",f"--emerald-dark: {HATCH_BLUE};")
