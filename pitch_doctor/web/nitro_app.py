@@ -55,9 +55,9 @@ def nitro_write_report(*args,**kwargs):
     }
     for old,new in replacements.items(): html=html.replace(old,new)
 
-    # Final safety net: if upstream ever emits the EU fine sentence in any form,
-    # remove the entire claim by its distinctive GDPR/fine wording.
-    html=re.sub(r"[^<]{0,20}GDPR fines[^<]{0,100}legal action\."," Privacy and disclosure requirements vary by location and business type; these missing items are worth reviewing for compliance and visitor trust.",html,flags=re.I)
+    # Final safety net: remove any surviving EU fine claim without eating nearby words.
+    html=re.sub(r"You(?:'|’)re at risk for GDPR fines \(up to €20M\) and legal action\.","Privacy and disclosure requirements vary by location and business type; these missing items are worth reviewing for compliance and visitor trust.",html,flags=re.I)
+    html=html.replace("disclosures. You Privacy and disclosure requirements", "disclosures. Privacy and disclosure requirements")
     html=re.sub(r"Nitro 605 Studios\s+at\s+Nitro 605\s*Studios\s+for updating your website","Ready to fix what this audit found? Nitro 605 Studios can handle the modernization work.",html,flags=re.I)
     html=re.sub(r"Contact\s+Nitro 605 Studios\s+at\s+Nitro 605 Studios[^<]*","Ready to fix what this audit found? Nitro 605 Studios can handle the modernization work.",html,flags=re.I)
     html=html.replace("--emerald: #10b981;",f"--emerald: {MANGO};").replace("--emerald-dark: #047857;",f"--emerald-dark: {HATCH_BLUE};")
