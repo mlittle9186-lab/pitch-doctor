@@ -29,5 +29,5 @@ VOLUME ["/app/reports"]
 
 EXPOSE 8765
 
-# Render (and most PaaS) inject PORT; bind 0.0.0.0 so the service is reachable.
-CMD ["sh", "-c", "pitch-doctor serve --host 0.0.0.0 --port ${PORT:-8765} --out /app/reports"]
+# Run the Nitro 605 Studios customization layer around Pitch Doctor.
+CMD ["sh", "-c", "uvicorn pitch_doctor.web.nitro_app:app --host 0.0.0.0 --port ${PORT:-8765}"]
