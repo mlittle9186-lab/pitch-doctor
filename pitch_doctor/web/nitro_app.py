@@ -18,6 +18,12 @@ INTERNAL_EMAIL = "internal@nitro605studios.invalid"
 INTERNAL_PHONE = "000-000-0000"
 OUT_DIR = Path(os.getenv("PITCH_DOCTOR_OUT", "/app/reports"))
 
+# Nitro-inspired palette: Mango Tango orange body, blue hatch, midnight console.
+MANGO = "#F36C21"
+MANGO_DIM = "rgba(243,108,33,.18)"
+HATCH_BLUE = "#2F6FED"
+MIDNIGHT = "#08111f"
+
 
 # ----- Internal dashboard copy -------------------------------------------------
 base.COPY["en"].update(
@@ -28,7 +34,7 @@ base.COPY["en"].update(
         "cta": "Run Audit",
         "advanced_label": "Prospect details",
         "email_label": "Internal email",
-        "business_name_label": "Business name (required if there is no website)",
+        "business_name_label": "Business name",
         "city_label": "City",
         "brand_name_label": "Report brand",
         "brand_phone_label": "Internal phone",
@@ -42,7 +48,7 @@ base.COPY["en"].update(
 # fields that are irrelevant in our private prospecting workflow.
 base.PAGE = (
     base.PAGE.replace("<title>Pitch Doctor</title>", "<title>Nitro 605 Studios | Prospect Audit</title>")
-    .replace("<h1>Pitch Doctor</h1>", "<h1>Nitro 605 Studios</h1>")
+    .replace("<h1>Pitch Doctor</h1>", "<h1><span class=\"nitro-word\">Nitro</span> <span class=\"blue-word\">605</span> Studios</h1>")
     .replace(
         '<div>\n            <label id="email-label"></label>\n            <input type="email" name="email" id="email-input" required>\n          </div>',
         f'<input type="hidden" name="email" id="email-input" value="{INTERNAL_EMAIL}">',
@@ -59,6 +65,15 @@ base.PAGE = (
         '<a href="https://zerodigitx.com" class="contact-cta" id="contact-cta"></a>',
         '<div class="footer-note" id="contact-cta"></div>',
     )
+    # Fix the mystery boxes: persistent labels/placeholders even if JS copy is delayed.
+    .replace('<label id="business-name-label"></label>', '<label id="business-name-label">Business name</label>')
+    .replace('<input type="text" name="business_name" id="business-name-input">', '<input type="text" name="business_name" id="business-name-input" placeholder="Business name">')
+    .replace('<label id="city-label"></label>', '<label id="city-label">City</label>')
+    .replace('<input type="text" name="city" id="city-input">', '<input type="text" name="city" id="city-input" placeholder="City">')
+    # Swap Generic SaaS Green™ for the actual Nitro palette.
+    .replace("--emerald: #10b981; --emerald-dim: rgba(16,185,129,.16);", f"--emerald: {MANGO}; --emerald-dim: {MANGO_DIM}; --nitro-blue: {HATCH_BLUE};")
+    .replace("background: radial-gradient(circle at 30% 0%, #142238 0%, var(--slate-950) 45%, #060a14 100%);", f"background: radial-gradient(circle at 30% 0%, #182947 0%, {MIDNIGHT} 48%, #040914 100%);")
+    .replace("</style>", f"\n  .nitro-word {{ color: {MANGO}; }}\n  .blue-word {{ color: {HATCH_BLUE}; }}\n  .subheading {{ color: {MANGO}; }}\n  .search-row {{ border-color: rgba(47,111,237,.55); }}\n  .search-row:focus-within {{ border-color: {MANGO}; box-shadow: 0 0 0 3px {MANGO_DIM}; }}\n  button {{ background: {MANGO}; color: #1f0b02; }}\n  .stage.done {{ color: {MANGO}; }}\n  .stage.active .stage-dot {{ border-color: {MANGO}; }}\n  .stage.active .stage-dot::after {{ background: {MANGO}; }}\n  .stage.done .stage-dot {{ border-color: {HATCH_BLUE}; background: {HATCH_BLUE}; }}\n</style>")
 )
 
 
@@ -92,6 +107,10 @@ def nitro_write_report(*args, **kwargs):
     }
     for old, new in replacements.items():
         html = html.replace(old, new)
+
+    # Give prospect-facing reports the same identity without sacrificing readability.
+    html = html.replace("--emerald: #10b981;", f"--emerald: {MANGO};")
+    html = html.replace("--emerald-dark: #047857;", f"--emerald-dark: {HATCH_BLUE};")
 
     path.write_text(html, encoding="utf-8")
     return path
